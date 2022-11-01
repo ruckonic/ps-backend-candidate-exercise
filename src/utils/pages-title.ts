@@ -23,7 +23,11 @@ export async function getPageTitle(url: string | URL): Promise<string> {
     }
 
     return title
-  } catch {
+  } catch (err) {
+    if (err instanceof PageTitleError) {
+      throw err
+    }
+
     throw new PageTitleError(`Can't get title for ${url.toString()}`)
   }
 }
