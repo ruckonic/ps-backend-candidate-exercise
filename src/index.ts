@@ -35,12 +35,10 @@ export async function returnSiteTitles(): Promise<string[]> {
  * @param localData array of objects
  * @returns array of objects
  */
-export function findTagCounts(localData: Array<SampleDateRecord>): Array<TagCounts> {
+export function findTagCounts(localData: SampleDateRecord[]): TagCounts[] {
   const tagCounts: Record<string, TagCounts> = {}
 
-  const tags = localData.flatMap(d => {
-    return d.tags
-  })
+  const tags = localData.flatMap(data => data.tags)
 
   tags.forEach(tag => {
     const tagCount = tagCounts?.[tag]?.count ?? 0
@@ -65,10 +63,15 @@ export function findTagCounts(localData: Array<SampleDateRecord>): Array<TagCoun
  *  - total cost = import cost + (unit price * quantity)
  *  - the "importTaxRate" is based on they destiantion country
  *  - if the imported item is on the "category exceptions" list, then no tax rate applies
+ * @deprecated
  */
-export function calcualteImportCost(importedItems: Array<ImportedItem>): Array<ImportCostOutput> {
+export function calcualteImportCost(importedItems: ImportedItem[]): ImportCostOutput[] {
   // please write your code in here.
   // note that `taxRate` has already been imported for you
+  return calculateImportCost(importedItems)
+}
+
+export function calculateImportCost(importedItems: ImportedItem[]): ImportCostOutput[] {
   return importedItems.map(({ name, unitPrice, countryDestination, category, quantity }) => {
     const countryTax = TaxRateDic[countryDestination]
     const calculateCost = new CalculateCost().setUnitPrice(unitPrice).setItemsQuantity(quantity)
