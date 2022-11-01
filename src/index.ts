@@ -1,4 +1,5 @@
 import taxRates from './data/taxRate.json'
+import { CalculateCost } from './libs/calculate-cost'
 import { getPageTitle } from './utils/pages-title'
 
 const TaxRateDic = Object.fromEntries(taxRates.map(tx => [tx.country, tx]))
@@ -70,20 +71,17 @@ export function calcualteImportCost(importedItems: Array<ImportedItem>): Array<I
   // note that `taxRate` has already been imported for you
   return importedItems.map(({ name, unitPrice, countryDestination, category, quantity }) => {
     const countryTax = TaxRateDic[countryDestination]
-    const subtotal = unitPrice * quantity
-    let importCost = 0
+    const calculateCost = new CalculateCost().setUnitPrice(unitPrice).setItemsQuantity(quantity)
 
     if (!countryTax.categoryExceptions.includes(category)) {
-      importCost = unitPrice * quantity * countryTax.importTaxRate
+      calculateCost.setTax(countryTax.importTaxRate)
     }
-
-    const totalCost = importCost + subtotal
 
     return {
       name,
-      importCost,
-      subtotal,
-      totalCost
+      importCost: calculateCost.getImportCost(),
+      subtotal: calculateCost.getSubtotal(),
+      totalCost: calculateCost.getTotal()
     }
   })
 }
