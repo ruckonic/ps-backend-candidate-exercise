@@ -1,5 +1,8 @@
-import fetch from 'cross-fetch'
 import taxRates from './data/taxRate.json'
+import { CalculateCost } from './libs/calculate-cost'
+import { getPageTitle } from './utils/pages-title'
+
+const TaxRateDic = Object.fromEntries(taxRates.map(tx => [tx.country, tx]))
 
 /**
  * Get site titles of cool websites.
@@ -9,7 +12,7 @@ import taxRates from './data/taxRate.json'
  *
  * @returns array of strings
  */
-export async function returnSiteTitles() {
+export async function returnSiteTitles(): Promise<string[]> {
   const urls = [
     'https://patientstudio.com/',
     'https://www.startrek.com/',
@@ -17,21 +20,10 @@ export async function returnSiteTitles() {
     'https://www.neowin.net/'
   ]
 
-  const titles = []
+  const titlesPromises = urls.map(getPageTitle)
+  const titles = await Promise.all(titlesPromises)
 
-  for (const url of urls) {
-    const response = await fetch(url, { method: 'GET' })
-
-    if (response.status === 200) {
-      const data = await response.text()
-      const match = data.match(/<title>(.*?)<\/title>/)
-      if (match?.length) {
-        titles.push(match[1])
-      }
-    }
-  }
-
-  return titles
+  return titles.sort()
 }
 
 /**
@@ -43,26 +35,21 @@ export async function returnSiteTitles() {
  * @param localData array of objects
  * @returns array of objects
  */
-export function findTagCounts(localData: Array<SampleDateRecord>): Array<TagCounts> {
-  const tagCounts: Array<TagCounts> = []
+export function findTagCounts(localData: SampleDateRecord[]): TagCounts[] {
+  const tagCounts: Record<string, TagCounts> = {}
 
-  for (let i = 0; i < localData.length; i++) {
-    const tags = localData[i].tags
+  const tags = localData.flatMap(data => data.tags)
 
-    for (let j = 0; j < tags.length; j++) {
-      const tag = tags[j]
+  tags.forEach(tag => {
+    const tagCount = tagCounts?.[tag]?.count ?? 0
 
-      for (let k = 0; k < tagCounts.length; k++) {
-        if (tagCounts[k].tag === tag) {
-          tagCounts[k].count++
-        } else {
-          tagCounts.push({ tag, count: 1 })
-        }
-      }
+    tagCounts[tag] = {
+      tag: tag,
+      count: tagCount + 1
     }
-  }
+  })
 
-  return tagCounts
+  return Object.values(tagCounts)
 }
 
 /**
@@ -76,8 +63,28 @@ export function findTagCounts(localData: Array<SampleDateRecord>): Array<TagCoun
  *  - total cost = import cost + (unit price * quantity)
  *  - the "importTaxRate" is based on they destiantion country
  *  - if the imported item is on the "category exceptions" list, then no tax rate applies
+ * @deprecated
  */
-export function calcualteImportCost(importedItems: Array<ImportedItem>): Array<ImportCostOutput> {
+export function calcualteImportCost(importedItems: ImportedItem[]): ImportCostOutput[] {
   // please write your code in here.
   // note that `taxRate` has already been imported for you
+  return calculateImportCost(importedItems)
+}
+
+export function calculateImportCost(importedItems: ImportedItem[]): ImportCostOutput[] {
+  return importedItems.map(({ name, unitPrice, countryDestination, category, quantity }) => {
+    const countryTax = TaxRateDic[countryDestination]
+    const calculateCost = new CalculateCost().setUnitPrice(unitPrice).setItemsQuantity(quantity)
+
+    if (!countryTax.categoryExceptions.includes(category)) {
+      calculateCost.setTax(countryTax.importTaxRate)
+    }
+
+    return {
+      name,
+      importCost: calculateCost.getImportCost(),
+      subtotal: calculateCost.getSubtotal(),
+      totalCost: calculateCost.getTotal()
+    }
+  })
 }
