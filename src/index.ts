@@ -1,6 +1,8 @@
 import fetch from 'cross-fetch'
 import taxRates from './data/taxRate.json'
 
+const TaxRateDic = Object.fromEntries(taxRates.map(tx => [tx.country, tx]))
+
 /**
  * Get site titles of cool websites.
  *
@@ -44,25 +46,22 @@ export async function returnSiteTitles() {
  * @returns array of objects
  */
 export function findTagCounts(localData: Array<SampleDateRecord>): Array<TagCounts> {
-  const tagCounts: Array<TagCounts> = []
+  const tagCounts: Record<string, TagCounts> = {}
 
-  for (let i = 0; i < localData.length; i++) {
-    const tags = localData[i].tags
+  const tags = localData.flatMap(d => {
+    return d.tags
+  })
 
-    for (let j = 0; j < tags.length; j++) {
-      const tag = tags[j]
+  tags.forEach(tag => {
+    const tagCount = tagCounts?.[tag]?.count ?? 0
 
-      for (let k = 0; k < tagCounts.length; k++) {
-        if (tagCounts[k].tag === tag) {
-          tagCounts[k].count++
-        } else {
-          tagCounts.push({ tag, count: 1 })
-        }
-      }
+    tagCounts[tag] = {
+      tag: tag,
+      count: tagCount + 1
     }
-  }
+  })
 
-  return tagCounts
+  return Object.values(tagCounts)
 }
 
 /**
@@ -80,4 +79,22 @@ export function findTagCounts(localData: Array<SampleDateRecord>): Array<TagCoun
 export function calcualteImportCost(importedItems: Array<ImportedItem>): Array<ImportCostOutput> {
   // please write your code in here.
   // note that `taxRate` has already been imported for you
+  return importedItems.map(({ name, unitPrice, countryDestination, category, quantity }) => {
+    const countryTax = TaxRateDic[countryDestination]
+    const subtotal = unitPrice * quantity
+    let importCost = 0
+
+    if (!countryTax.categoryExceptions.includes(category)) {
+      importCost = unitPrice * quantity * countryTax.importTaxRate
+    }
+
+    const totalCost = importCost + subtotal
+
+    return {
+      name,
+      importCost,
+      subtotal,
+      totalCost
+    }
+  })
 }
