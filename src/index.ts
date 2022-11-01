@@ -1,9 +1,5 @@
-import fetch from 'cross-fetch'
 import taxRates from './data/taxRate.json'
-
-const HttpStatusCode = {
-  OK: 200
-}
+import { getPageTitle } from './utils/pages-title'
 
 /**
  * Get site titles of cool websites.
@@ -21,24 +17,9 @@ export async function returnSiteTitles(): Promise<string[]> {
     'https://www.neowin.net/'
   ]
 
-  const titlesPromises = urls.map(async url => {
-    try {
-      const response = await fetch(url)
-
-      if (response.status !== HttpStatusCode.OK) {
-        return ''
-      }
-
-      const data = await response.text()
-      const match = data.match(/<title>(?<title>.+?)<\/title>/)
-
-      return match?.groups?.title ?? ''
-    } catch {
-      return ''
-    }
-  })
-
+  const titlesPromises = urls.map(getPageTitle)
   const titles = await Promise.all(titlesPromises)
+
   return titles.sort()
 }
 
