@@ -1,5 +1,5 @@
-import fetch from 'cross-fetch'
 import taxRates from './data/taxRate.json'
+import { getPageTitle } from './utils/pages-title'
 
 /**
  * Get site titles of cool websites.
@@ -9,7 +9,7 @@ import taxRates from './data/taxRate.json'
  *
  * @returns array of strings
  */
-export async function returnSiteTitles() {
+export async function returnSiteTitles(): Promise<string[]> {
   const urls = [
     'https://patientstudio.com/',
     'https://www.startrek.com/',
@@ -17,21 +17,10 @@ export async function returnSiteTitles() {
     'https://www.neowin.net/'
   ]
 
-  const titles = []
+  const titlesPromises = urls.map(getPageTitle)
+  const titles = await Promise.all(titlesPromises)
 
-  for (const url of urls) {
-    const response = await fetch(url, { method: 'GET' })
-
-    if (response.status === 200) {
-      const data = await response.text()
-      const match = data.match(/<title>(.*?)<\/title>/)
-      if (match?.length) {
-        titles.push(match[1])
-      }
-    }
-  }
-
-  return titles
+  return titles.sort()
 }
 
 /**
